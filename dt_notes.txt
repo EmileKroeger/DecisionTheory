@@ -1,0 +1,92 @@
+Started again, in decisionworld2.py
+
+I formalized the game decision and the agents (with worlds and rules and roles),
+but I still can't represent everything.
+
+Next steps:
+    * -Isolate predicates and adapt them.-
+    * -make the old 'is_certain" work-
+    * define a mixed strategies game
+    * make mixed strategy players
+    
+
+########################
+
+
+Nash equilibrium is hard - not always solveable. I heard correlated equilibrium
+is better.
+
+Now I can handle:
+ * absent-minded driver (find optimal strategy)
+ * prisoner's dilemma with knowledge of other's source
+
+What I would like to do:
+ * Find nash equilibrium in simple, coin-flippin' game
+ * Optimize strategy when the other already decided (not even a
+   real interesting game)
+
+
+I can formalize a game as consisting of:
+ * A game function: takes agents (and randomness), returns utilities
+ * Agent roles: which utility to maximize? (may take different choices)
+ * Strategies: may or may not be custom-made for a specific role
+
+
+Information a role can have:
+ * Strategy(code) of other players
+ * "Position" (index) among players
+ * Which utility (if any) he's trying to maximize
+
+Ways of analyzing a game:
+ * Payoff matrix (for simultaneous choices)
+ * simulation (absent-minded driver, newcomb, ultimatum)
+    
+== old ==
+
+Stuff I still can't handle:
+* Counterfactual mugging
+* Random strategies (nash equilibrium)
+* Flipping acausal coins (geting two agents to cooperate?)
+
+Other ways of describing my algorithm.
+
+def nice_prisonner():
+    if (COOPERATE -> (utility == 3)):
+        return COOPERATE
+    else:
+        return DEFECT
+
+def nice_prisonner():
+    if can_prove(COOPERATE -> (utility == 3)):
+        return COOPERATE
+    else:
+        return DEFECT
+
+def nice_prisonner():
+    if imagine_counterfactual(COOPERATE -> (utility == 3)):
+        return COOPERATE
+    else:
+        return DEFECT
+
+def nice_prisonner(evidence):
+    if (evidence ==> (COOPERATE -> (utility == 3))):
+        return COOPERATE
+    else:
+        return DEFECT
+
+-------
+
+how to represent different timelines like counterfactual muggin
+
+def counterfactual_mugging(evidence, agent):
+    if (coin_flip = TAILS):
+        if imagine ((coin_flip = HEADS) -> (agent_choice = GIVE)):
+            return 10000
+        else:
+            return 0
+    else:
+        if agent_choice == GIVE:
+            return -100
+        else:
+            return 0
+
