@@ -6,8 +6,9 @@ but I still can't represent everything.
 Next steps:
     * -Isolate predicates and adapt them.-
     * -make the old 'is_certain" work-
-    * define a mixed strategies game
-    * make mixed strategy players
+    * -define a mixed strategies game-
+    * -make mixed strategy players-
+    * make a reliable way to get expected utility from a mixed strategy.
     
 
 ########################

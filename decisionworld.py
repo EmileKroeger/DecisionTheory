@@ -54,10 +54,12 @@ class GameRules:
     def __init__(self, function, *roles):
         self.roles = roles
         self.function = function
-        # Now would be the right place
+        # Now would be the right place to do some pre-analysis.
+        # On possible outcomes, etc.
 
     def run(self, *strategies):
         game = Game(self, strategies)
+        # This is where I may want to make several forks.
         world = World(game)
         world.run()
         for role in self.roles:
@@ -109,6 +111,14 @@ class Game:
             world = World(sub_game)
             world.run()
             return world.state in allowed_states
+
+    def random(self, choice_probas):
+        # 1) ask for a fork
+        pass
+
+    def run(self):
+        world = World(self)
+        world.run()
 
 class World:
     def __init__(self, game, state={}):

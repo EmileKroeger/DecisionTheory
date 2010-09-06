@@ -211,6 +211,9 @@ def coin_guessing(world):
     world[P1UTIL] = int(coin1 == coin2)
     world[P2UTIL] = 1 - world[P1UTIL]
 
+def randomguesser(role, game):
+    return game.random({HEADS: 0.5, TAILS: 0.5})
+
 coin_guessing_rules = GameRules(coin_guessing, CoinGuesser1, CoinGuesser2)
 
 if __name__ == "__main__":
