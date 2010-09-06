@@ -29,25 +29,22 @@ class Agent:
         self.strategy = strategy
 
     def get_choice(self, world):
-        var, alternatives = self.role.choice
         if self.role.sees_world:
             return self.strategy(self.role, world.game, dict(world.state))
         else:
             return self.strategy(self.role, world.game)
 
 def print_role_result(role, state):
-    var, alternatives = role.choice
-    util = role.utility
-    print "%s = %s -> %s = %s" % (var, str(state[var]), util, str(state[util]))
+    print "%s = %s -> %s = %s" % (role.choicevar, str(state[role.choicevar]),
+                                  role.utility, str(state[role.utility]))
 
 def iter_role_states(role, state):
     state = dict(state)
-    var, alternatives = role.choice
-    if var in state:
+    if role.choicevar in state:
         yield state
     else:
-        for choice in alternatives:
-            state[var] = choice
+        for choice in role.choices:
+            state[role.choicevar] = choice
             yield dict(state)
 
 class GameRules:
@@ -92,7 +89,7 @@ class Game:
         self.function = rules.function
         self.agents = {}
         for i, role in enumerate(rules.roles):
-            self.agents[role.choice[0]] = Agent(role, strategies[i])
+            self.agents[role.choicevar] = Agent(role, strategies[i])
         if possible_states is None:
             possible_states = list(self.rules.iter_possible_outcomes({}))
         self._possible_states = possible_states
@@ -125,7 +122,7 @@ class World:
         self.game = game
         self.state = dict(state)
 
-    def __getitem__(self, var):
+    def get(self, var):
         if var not in self.state:
             agent = self.game.agents[var]
             self.state[var] = agent.get_choice(self)

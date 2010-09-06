@@ -47,17 +47,19 @@ ACCEPTS = "ACCEPTS"
 
 class GiverRole:
     utility = GIVER_REWARD
-    choice = (OFFER, [(5, 5), (8, 2)])
+    choicevar = OFFER
+    choices = [(5, 5), (8, 2)]
     sees_world = True
 
 class AccepterRole:
     utility = ACCEPTER_REWARD
-    choice = (ACCEPTS, [True, False])
+    choicevar = ACCEPTS
+    choices = [True, False]
     sees_world = True
 
 def ultimatum(world):
-    offer = world[OFFER]
-    if world[ACCEPTS]:
+    offer = world.get(OFFER)
+    if world.get(ACCEPTS):
         world[GIVER_REWARD], world[ACCEPTER_REWARD] = offer
     else:
         world[GIVER_REWARD], world[ACCEPTER_REWARD] = (0, 0)
@@ -74,16 +76,15 @@ def make_mono_strategy(choice):
     return choose
 
 def first_strategy(role, *args):
-    return role.choice[1][0]
+    return role.choices[0]
 
 def last_strategy(role, *args):
-    return role.choice[1][-1]
+    return role.choices[-1]
 
 def blind_optimizer(role, game, *args):
-    var, alternatives = role.choice
     utilities_and_choices = []
     for state in game.rules.iter_possible_outcomes({}):
-        choice = state[var]
+        choice = state[role.choicevar]
         utility = state[role.utility]
         utilities_and_choices.append((utility, choice))
     return sorted(utilities_and_choices, reverse=True)[0][1]
@@ -97,12 +98,14 @@ DEFECT = "DEFECT"
 
 class Prisoner1:
     utility = P1UTIL
-    choice = (P1CHOICE, [COOPERATE, DEFECT])
+    choicevar = P1CHOICE
+    choices = [COOPERATE, DEFECT]
     sees_world = False
 
 class Prisoner2:
     utility = P2UTIL
-    choice = (P2CHOICE, [COOPERATE, DEFECT])
+    choicevar = P2CHOICE
+    choices = [COOPERATE, DEFECT]
     sees_world = False
 
 pd_payoffs = {(COOPERATE, COOPERATE): (3, 3),
@@ -111,7 +114,7 @@ pd_payoffs = {(COOPERATE, COOPERATE): (3, 3),
               (DEFECT,    DEFECT):    (1, 1)}
 
 def prisoners_dilemma(world):
-    choices = world[P1CHOICE], world[P2CHOICE]
+    choices = world.get(P1CHOICE), world.get(P2CHOICE)
     world[P1UTIL], world[P2UTIL] = pd_payoffs[choices]
 
 pd_rules = GameRules(prisoners_dilemma, Prisoner1, Prisoner2)
@@ -122,17 +125,17 @@ pd_asshole = make_mono_strategy(DEFECT)
 pd_sucker = make_mono_strategy(COOPERATE)
 
 def nice_prisoner(role, game):
-    if game.is_certain(Implies(Is(role.choice[0], COOPERATE),
+    if game.is_certain(Implies(Is(role.choicevar, COOPERATE),
                                Is(role.utility, 3))):
         return COOPERATE
     else:
         return DEFECT
 
 def smart_prisoner(role, game):
-    if game.is_certain(Implies(Is(role.choice[0], DEFECT),
+    if game.is_certain(Implies(Is(role.choicevar, DEFECT),
                                Is(role.utility, 5))):
         return DEFECT
-    elif game.is_certain(Implies(Is(role.choice[0], COOPERATE),
+    elif game.is_certain(Implies(Is(role.choicevar, COOPERATE),
                                  Is(role.utility, 3))):
         return COOPERATE
     else:
@@ -153,22 +156,24 @@ PLAYER_UTIL = "PLAYER_UTIL"
 
 class OmegaRole:
     utility = OMEGA_WAS_RIGHT
-    choice = OMEGA_PREDICATION, (ONEBOX, TWOBOX)
+    choicevar = OMEGA_PREDICATION
+    choices = [ONEBOX, TWOBOX]
     sees_world = False
 
 class NewcombsPlayerRole:
     utility = PLAYER_UTIL
-    choice = PLAYER_CHOICE, (ONEBOX, TWOBOX)
+    choicevar = PLAYER_CHOICE
+    choices = [ONEBOX, TWOBOX]
     sees_world = False
 
 def newcombs_problem(world):
-    prediction = world[OMEGA_PREDICATION]
+    prediction = world.get(OMEGA_PREDICATION)
     transparent_box = 1000
     if prediction == TWOBOX:
         opaque_box = 0
     else:
         opaque_box = 1000000
-    player_choice = world[PLAYER_CHOICE]
+    player_choice = world.get(PLAYER_CHOICE)
     if player_choice == TWOBOX:
         world[PLAYER_UTIL] = opaque_box + transparent_box
     else:
@@ -197,17 +202,19 @@ TAILS = "TAILS"
 
 class CoinGuesser1:
     utility = P1UTIL
-    choice = (P1COIN, [HEADS, TAILS])
+    choicevar = P1COIN
+    choices = [HEADS, TAILS]
     sees_world = False
     
 class CoinGuesser2:
     utility = P2UTIL
-    choice = (P2COIN, [HEADS, TAILS])
+    choicevar = P2COIN
+    choices = [HEADS, TAILS]
     sees_world = False
 
 def coin_guessing(world):
-    coin1 = world[P1COIN]
-    coin2 = world[P2COIN]
+    coin1 = world.get(P1COIN)
+    coin2 = world.get(P2COIN)
     world[P1UTIL] = int(coin1 == coin2)
     world[P2UTIL] = 1 - world[P1UTIL]
 
@@ -218,11 +225,12 @@ coin_guessing_rules = GameRules(coin_guessing, CoinGuesser1, CoinGuesser2)
 
 if __name__ == "__main__":
     #ultimatum_rules.run(first_strategy, first_strategy)
-    #ultimatum_rules.run(blind_optimizer, blind_optimizer)
+    ultimatum_rules.run(blind_optimizer, blind_optimizer)
     #pd_rules.run(pd_asshole, blind_optimizer)
-    #pd_rules.run(nice_prisoner, pd_sucker)
+    pd_rules.run(nice_prisoner, pd_sucker)
     #newcombs_rules.run(omega, make_mono_strategy(ONEBOX))
-    coin_guessing_rules.run(make_mono_strategy(HEADS), make_mono_strategy(HEADS))
+    #coin_guessing_rules.run(make_mono_strategy(HEADS), make_mono_strategy(HEADS))
+    pass
 
 
 
