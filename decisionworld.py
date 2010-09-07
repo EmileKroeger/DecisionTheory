@@ -38,6 +38,33 @@ def print_role_result(role, state):
     print "%s = %s -> %s = %s" % (role.choicevar, str(state[role.choicevar]),
                                   role.utility, str(state[role.utility]))
 
+def print_role_expected_result(role, states_and_probas):
+    choice_probas = {}
+    expected_utility = 0.0
+    utilities = set()
+    for state, proba in states_and_probas:
+        choice = state[role.choicevar]
+        choice_probas[choice] = choice_probas.get(choice, 0.0) + proba
+        expected_utility += state[role.utility] * proba
+        utilities.add(state[role.utility])
+    if len(choice_probas) > 1:
+        print "Choices (%s):" % str(role.choicevar),
+        for choice in choice_probas:
+            percentage = 100.0 * choice_probas[choice]
+            if int(percentage) == percentage:
+                print "%s (%i%%)" % (str(choice), int(percentage)),
+            else:
+                print "%s (%.1f%%)" % (str(choice), 100.0 * percentage),
+        print
+    else:
+        choice = choice_probas.keys()[0] # There should be at least 1!
+        print "Choice (%s): %s" % (str(role.choicevar), choice)
+    if len(utilities) > 1:
+        print "Expected utility (%s): %.2f" % (str(role.utility),
+                                               expected_utility)
+    else:
+        print "Utility (%s):" % str(role.utility), str(utilities.pop())
+
 def iter_role_states(role, state):
     state = dict(state)
     if role.choicevar in state:
@@ -57,18 +84,9 @@ class GameRules:
     def run(self, *strategies):
         game = Game(self, strategies)
         # This is where I may want to make several forks.
-        world = World(game)
-        world.run()
+        world = game.run()
         for role in self.roles:
             print_role_result(role, world.state)
-
-    def run_proba(self, *strategies):
-        game = ProbabilisticGame(self, strategies)
-        # This is where I may want to make several forks.
-        for world, proba in game.iter_worlds():
-            print "Proba:", proba
-            for role in self.roles:
-                print_role_result(role, world.state)
 
     def _iter_outcomes_rec(self, base_state, roles):
         if roles:
@@ -90,6 +108,14 @@ class GameRules:
             values.add(state[var])
         return values
 
+class ProbaGameRules(GameRules):
+    def run(self, *strategies):
+        game = Game(self, strategies)
+        probagame = ProbabilisticGame(game)
+        worlds_and_probas = [(w.state, p) for w, p in probagame.iter_worlds()]
+        for role in self.roles:
+            print_role_expected_result(role, worlds_and_probas)
+
 class Game:
     def __init__(self, rules, strategies, possible_states=None):
         self.rules = rules
@@ -102,6 +128,9 @@ class Game:
             possible_states = list(self.rules.iter_possible_outcomes({}))
         self._possible_states = possible_states
 
+    def get_agent_choice(self, var, world):
+        return self.agents[var].get_choice(world)
+
     def is_certain(self, predicate):
         allowed_states = filter(predicate.fulfills, self._possible_states)
         if len(allowed_states) >= len(self._possible_states):
@@ -113,28 +142,29 @@ class Game:
             # We need recursion! But under strict control.
             sub_game = Game(self.rules, self.strategies,
                             possible_states=allowed_states)
-            world = World(sub_game)
-            world.run()
+            world = sub_game.run()
             return world.state in allowed_states
 
-    def random(self, choice_probas):
-        # 1) ask for a fork
-        pass
+    def random(self):
+        assert False, "This game doesn't allow random strategies!"
 
-class ProbabilisticGame(Game):
-    def __init__(self, rules, strategies):
-        self.rules = rules
-        self.strategies = strategies
-        self.function = rules.function
-        self.agents = {}
-        for i, role in enumerate(rules.roles):
-            self.agents[role.choicevar] = Agent(role, strategies[i])
+    def run(self):
+        world = World(self)
+        self.function(world)        
+        return world
+
+class ProbabilisticGame:
+    def __init__(self, game):
+        self.game = game
         self.done = False
         self.index = 0
         self.needed = []
         self.playback = []
         self.current = []
         self.current_proba = 1.0
+
+    def get_agent_choice(self, var, world):
+        return self.game.get_agent_choice(var, world)
 
     def reset(self):
         self.current = []
@@ -145,6 +175,9 @@ class ProbabilisticGame(Game):
             self.done = False
         else:
             self.done = True
+
+    def is_certain(self):
+        return self.game.is_certain
 
     def random(self, choice_probas):
         if self.index < len(self.playback):
@@ -161,10 +194,9 @@ class ProbabilisticGame(Game):
     def iter_worlds(self):
         while not self.done:
             world = World(self)
-            self.function(world)
+            self.game.function(world)
             yield world, self.current_proba
             self.reset()
-
 
 class World:
     def __init__(self, game, state={}):
@@ -173,15 +205,11 @@ class World:
 
     def get(self, var):
         if var not in self.state:
-            agent = self.game.agents[var]
-            self.state[var] = agent.get_choice(self)
+            self.state[var] = self.game.get_agent_choice(var, self)
         return self.state[var]
 
     def __setitem__(self, var, val):
         self.state[var] = val
-
-    def run(self):
-        self.game.function(self)
 
     def __str__(self):
         return str(self.state)
