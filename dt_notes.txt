@@ -1,3 +1,6 @@
+git push origin master
+(to put on github depot)
+
 Started again, in decisionworld2.py
 
 I formalized the game decision and the agents (with worlds and rules and roles),

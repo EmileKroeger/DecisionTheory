@@ -164,7 +164,12 @@ class ProbabilisticGame:
         self.current_proba = 1.0
 
     def get_agent_choice(self, var, world):
-        return self.game.get_agent_choice(var, world)
+        choice = self.game.get_agent_choice(var, world)
+        if isinstance(choice, dict):
+            choice_probas = [(c, choice[c]) for c in choice]
+            return self._random(choice_probas)
+        else:
+            return choice
 
     def reset(self):
         self.current = []
@@ -179,7 +184,7 @@ class ProbabilisticGame:
     def is_certain(self):
         return self.game.is_certain
 
-    def random(self, choice_probas):
+    def _random(self, choice_probas):
         if self.index < len(self.playback):
             choice, proba = self.playback[self.index]
         else:
