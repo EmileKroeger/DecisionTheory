@@ -216,21 +216,23 @@ def coin_guessing(world):
     coin1 = world.get(P1COIN)
     coin2 = world.get(P2COIN)
     world[P1UTIL] = int(coin1 == coin2)
-    world[P2UTIL] = 1 - world[P1UTIL]
+    world[P2UTIL] = 1 - int(coin1 == coin2)
 
 def randomguesser(role, game):
-    return game.random({HEADS: 0.5, TAILS: 0.5})
+    return game.random([(HEADS, 0.5), (TAILS, 0.5)])
 
 coin_guessing_rules = GameRules(coin_guessing, CoinGuesser1, CoinGuesser2)
 
 if __name__ == "__main__":
     #ultimatum_rules.run(first_strategy, first_strategy)
-    ultimatum_rules.run(blind_optimizer, blind_optimizer)
+    #ultimatum_rules.run(blind_optimizer, blind_optimizer)
     #pd_rules.run(pd_asshole, blind_optimizer)
-    pd_rules.run(nice_prisoner, pd_sucker)
+    #pd_rules.run(nice_prisoner, pd_sucker)
     #newcombs_rules.run(omega, make_mono_strategy(ONEBOX))
-    #coin_guessing_rules.run(make_mono_strategy(HEADS), make_mono_strategy(HEADS))
-    pass
+    #coin_guessing_rules.run_proba(make_mono_strategy(HEADS), make_mono_strategy(HEADS))
+    #coin_guessing_rules.run_proba(randomguesser, make_mono_strategy(HEADS))
+    coin_guessing_rules.run_proba(randomguesser, randomguesser)
+    #pass
 
 
 

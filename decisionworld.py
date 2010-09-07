@@ -62,6 +62,14 @@ class GameRules:
         for role in self.roles:
             print_role_result(role, world.state)
 
+    def run_proba(self, *strategies):
+        game = ProbabilisticGame(self, strategies)
+        # This is where I may want to make several forks.
+        for world, proba in game.iter_worlds():
+            print "Proba:", proba
+            for role in self.roles:
+                print_role_result(role, world.state)
+
     def _iter_outcomes_rec(self, base_state, roles):
         if roles:
             for choice_state in iter_role_states(roles[0], base_state):
@@ -113,9 +121,50 @@ class Game:
         # 1) ask for a fork
         pass
 
-    def run(self):
-        world = World(self)
-        world.run()
+class ProbabilisticGame(Game):
+    def __init__(self, rules, strategies):
+        self.rules = rules
+        self.strategies = strategies
+        self.function = rules.function
+        self.agents = {}
+        for i, role in enumerate(rules.roles):
+            self.agents[role.choicevar] = Agent(role, strategies[i])
+        self.done = False
+        self.index = 0
+        self.needed = []
+        self.playback = []
+        self.current = []
+        self.current_proba = 1.0
+
+    def reset(self):
+        self.current = []
+        self.index = 0
+        self.current_proba = 1.0
+        if len(self.needed) > 0:
+            self.playback = self.needed.pop()
+            self.done = False
+        else:
+            self.done = True
+
+    def random(self, choice_probas):
+        if self.index < len(self.playback):
+            choice, proba = self.playback[self.index]
+        else:
+            choice, proba = choice_probas.pop()
+            for pair in choice_probas:
+                self.needed.append(list(self.current) + [pair])
+        self.index += 1
+        self.current.append((choice, proba))
+        self.current_proba *= proba
+        return choice
+
+    def iter_worlds(self):
+        while not self.done:
+            world = World(self)
+            self.function(world)
+            yield world, self.current_proba
+            self.reset()
+
 
 class World:
     def __init__(self, game, state={}):
