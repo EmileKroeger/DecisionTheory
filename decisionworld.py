@@ -108,7 +108,39 @@ class GameRules:
             values.add(state[var])
         return values
 
+def _iter_mixed_choices_dicts(choices, remaining_parts, total_parts):
+    if remaining_parts == 0:
+        yield {}
+    else:
+        first = choices[0]
+        if len(choices) <= 1:
+            yield {first: float(remaining_parts) / total_parts}
+        else:
+            for first_parts in range(remaining_parts + 1):
+                parts = remaining_parts - first_parts
+                for sub_choice in _iter_mixed_choices_dicts(choices[1:], parts,
+                                                            total_parts):
+                    if first_parts > 0:
+                        sub_choice[first] = float(first_parts) / total_parts
+                    yield sub_choice
+                
+def _iter_mixed_choices(choices, parts):
+    for dic in _iter_mixed_choices_dicts(choices, parts, parts):
+        if len(dic) == 1:
+            yield dic.keys()[0]
+        else:
+            yield dic
+
 class ProbaGameRules(GameRules):
+    def __init__(self, function, *roles):
+        new_roles = []
+        for role in roles:
+            class new_role(role):
+                choices = list(_iter_mixed_choices(role.choices, 8))
+            new_role.__name__ = role.__name__
+            new_roles.append(new_role)
+        GameRules.__init__(self, function, *new_roles)
+    
     def run(self, *strategies):
         game = Game(self, strategies)
         probagame = ProbabilisticGame(game)
@@ -156,6 +188,7 @@ class Game:
 class ProbabilisticGame:
     def __init__(self, game):
         self.game = game
+        self.rules = game.rules
         self.done = False
         self.index = 0
         self.needed = []
@@ -213,10 +246,15 @@ class World:
             self.state[var] = self.game.get_agent_choice(var, self)
         return self.state[var]
 
+    def __delitem__(self, var):
+        del self.state[var]
+
     def __setitem__(self, var, val):
         self.state[var] = val
 
     def __str__(self):
         return str(self.state)
 
-
+if __name__ == "__main__":
+    for c in _iter_mixed_choices(["Foo", "Bar", "Foobar"], 4):
+        print c

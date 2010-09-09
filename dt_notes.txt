@@ -11,7 +11,8 @@ Next steps:
     * -make the old 'is_certain" work-
     * -define a mixed strategies game-
     * -make mixed strategy players-
-    * make a reliable way to get expected utility from a mixed strategy.
+    * -make a reliable way to get expected utility from a mixed strategy.-
+    * When creating game, modify rules to add interesting mixed strategy choices.
     
 
 ########################

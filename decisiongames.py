@@ -35,6 +35,28 @@ P2CHOICE = "P2CHOICE"
 P1UTIL = "P1UTIL"
 P2UTIL = "P2UTIL"
 
+####################################
+# Strategies
+####################################
+
+def make_mono_strategy(choice):
+    def choose(role, *args):
+        return choice
+    return choose
+
+def first_strategy(role, *args):
+    return role.choices[0]
+
+def last_strategy(role, *args):
+    return role.choices[-1]
+
+def blind_optimizer(role, game, *args):
+    utilities_and_choices = []
+    for state in game.rules.iter_possible_outcomes({}):
+        choice = state[role.choicevar]
+        utility = state[role.utility]
+        utilities_and_choices.append((utility, choice))
+    return sorted(utilities_and_choices, reverse=True)[0][1]
 
 ####################################
 # Ultimatum
@@ -65,29 +87,6 @@ def ultimatum(world):
         world[GIVER_REWARD], world[ACCEPTER_REWARD] = (0, 0)
 
 ultimatum_rules = GameRules(ultimatum, GiverRole, AccepterRole)
-
-####################################
-# Strategies
-####################################
-
-def make_mono_strategy(choice):
-    def choose(role, *args):
-        return choice
-    return choose
-
-def first_strategy(role, *args):
-    return role.choices[0]
-
-def last_strategy(role, *args):
-    return role.choices[-1]
-
-def blind_optimizer(role, game, *args):
-    utilities_and_choices = []
-    for state in game.rules.iter_possible_outcomes({}):
-        choice = state[role.choicevar]
-        utility = state[role.utility]
-        utilities_and_choices.append((utility, choice))
-    return sorted(utilities_and_choices, reverse=True)[0][1]
 
 ####################################
 # Prisoner's Dilemma
@@ -142,7 +141,7 @@ def smart_prisoner(role, game):
         return DEFECT
 
 ###################################
-#newcomb's problem
+# Newcomb's problem
 ###################################
 
 
@@ -192,7 +191,7 @@ def omega(role, game):
 newcombs_rules = GameRules(newcombs_problem, OmegaRole, NewcombsPlayerRole)
 
 ###################################
-# coin guessing
+# Coin guessing
 ###################################
 
 P1COIN = "P1COIN"
@@ -224,6 +223,35 @@ def randomguesser(role, game):
 
 coin_guessing_rules = ProbaGameRules(coin_guessing, CoinGuesser1, CoinGuesser2)
 
+
+###################################
+# Absent-minded driver
+###################################
+
+DRIVERUTIL = "DRIVERUTIL"
+DRIVERCHOICE = "DRIVERUTIL"
+STRAIGHT = "STRAIGHT"
+TURN = "TURN"
+
+class AbsentMindedDriver:
+    utility = DRIVERUTIL
+    choicevar = DRIVERCHOICE
+    choices = [TURN, STRAIGHT]
+    sees_world = False
+
+def absent_minded_driver(world):
+    if (world.get(DRIVERCHOICE) == TURN):
+        world[DRIVERUTIL] = 0
+    else:
+        del world[DRIVERCHOICE] # He's absent-minded, remember
+        if (world.get(DRIVERCHOICE) == TURN):
+            world[DRIVERUTIL] = 4
+        else:
+            world[DRIVERUTIL] = 1
+        
+absent_minded_driver_rules = ProbaGameRules(absent_minded_driver,
+                                            AbsentMindedDriver)
+    
 if __name__ == "__main__":
     #ultimatum_rules.run(first_strategy, first_strategy)
     #ultimatum_rules.run(blind_optimizer, blind_optimizer)
@@ -232,7 +260,13 @@ if __name__ == "__main__":
     #newcombs_rules.run(omega, make_mono_strategy(ONEBOX))
     #coin_guessing_rules.run(make_mono_strategy(HEADS), make_mono_strategy(HEADS))
     #coin_guessing_rules.run(randomguesser, make_mono_strategy(HEADS))
-    coin_guessing_rules.run(randomguesser, randomguesser)
+    #coin_guessing_rules.run(randomguesser, blind_optimizer)
+    #print
+    #coin_guessing_rules.run(make_mono_strategy(HEADS), blind_optimizer)
+    #print
+    #coin_guessing_rules.run(blind_optimizer, blind_optimizer)
+    #absent_minded_driver_rules.run(blind_optimizer)
+    absent_minded_driver_rules.run(make_mono_strategy({TURN:0.33, STRAIGHT:0.67}))
     #pass
 
 
