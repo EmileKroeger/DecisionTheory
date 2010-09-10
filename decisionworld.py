@@ -35,47 +35,64 @@ class Agent:
             return self.strategy(self.role, world.game)
 
 def print_role_result(role, state):
-    print "%s = %s -> %s = %s" % (role.choicevar, str(state[role.choicevar]),
-                                  role.utility, str(state[role.utility]))
+    chosen = ["%s = %s" % (var, str(state[var])) for var in role.choicevars]
+    print "%s -> %s = %s" % (", ".join(chosen), role.utility,
+                             str(state[role.utility]))
 
 def print_role_expected_result(role, states_and_probas):
-    choice_probas = {}
+    for choicevar in role.choicevars:
+        choice_probas = {}
+        for state, proba in states_and_probas:
+            if choicevar in state:
+                choice = state[choicevar]
+                choice_probas[choice] = choice_probas.get(choice, 0.0) + proba
+        if len(choice_probas) > 1:
+            print "Choices (%s):" % str(choicevar),
+            for choice in choice_probas:
+                percentage = 100.0 * choice_probas[choice]
+                if int(percentage) == percentage:
+                    print "%s (%i%%)" % (str(choice), int(percentage)),
+                else:
+                    print "%s (%.1f%%)" % (str(choice), percentage),
+            print
+        elif choice_probas:
+            choices = choice_probas.keys()
+            print "Choice (%s): %s" % (str(choicevar), choices[0])
+        else:
+            print "Choice (%s): Never encountered" % str(choicevar)
     expected_utility = 0.0
     utilities = set()
     for state, proba in states_and_probas:
-        choice = state[role.choicevar]
-        choice_probas[choice] = choice_probas.get(choice, 0.0) + proba
         expected_utility += state[role.utility] * proba
         utilities.add(state[role.utility])
-    if len(choice_probas) > 1:
-        print "Choices (%s):" % str(role.choicevar),
-        for choice in choice_probas:
-            percentage = 100.0 * choice_probas[choice]
-            if int(percentage) == percentage:
-                print "%s (%i%%)" % (str(choice), int(percentage)),
-            else:
-                print "%s (%.1f%%)" % (str(choice), 100.0 * percentage),
-        print
-    else:
-        choice = choice_probas.keys()[0] # There should be at least 1!
-        print "Choice (%s): %s" % (str(role.choicevar), choice)
     if len(utilities) > 1:
         print "Expected utility (%s): %.2f" % (str(role.utility),
                                                expected_utility)
     else:
         print "Utility (%s):" % str(role.utility), str(utilities.pop())
 
+def _iter_choice_states(choices, state, choicevars):
+    if choicevars:
+        choicevar = choicevars[0]
+        for substate in _iter_choice_states(choices, state, choicevars[1:]):
+            if choicevar in substate:
+                yield substate
+            else:
+                for choice in choices:
+                    substate[choicevar] = choice
+                    yield dict(substate)
+    else:
+        yield state
+
 def iter_role_states(role, state):
     state = dict(state)
-    if role.choicevar in state:
-        yield state
-    else:
-        for choice in role.choices:
-            state[role.choicevar] = choice
-            yield dict(state)
+    return _iter_choice_states(role.choices, dict(state), role.choicevars)
 
 class GameRules:
     def __init__(self, function, *roles):
+        for role in roles:
+            if not hasattr(role, "choicevars"):
+                role.choicevars = [role.choicevar]
         self.roles = roles
         self.function = function
         # Now would be the right place to do some pre-analysis.
@@ -95,12 +112,16 @@ class GameRules:
                                                            roles[1:]):
                     yield final_state
         else:
-            result = dict(base_state)
+            yield base_state
+
+    def iter_possible_outcomes(self, base_state):
+        for choice_state in self._iter_outcomes_rec(base_state, self.roles):
+            result = dict(choice_state)
             self.function(result)
             yield result
 
-    def iter_possible_outcomes(self, base_state):
-        return self._iter_outcomes_rec(base_state, self.roles)
+    def extrapolate_possible_outcomes(self, base_state):
+        return iter_possible_outcomes(self, base_state)
 
     def get_possible_values(self, var):
         values = set()
@@ -131,22 +152,55 @@ def _iter_mixed_choices(choices, parts):
         else:
             yield dic
 
+GRANULARITY = 8 # 8 is reasonable
+
 class ProbaGameRules(GameRules):
     def __init__(self, function, *roles):
         new_roles = []
         for role in roles:
             class new_role(role):
-                choices = list(_iter_mixed_choices(role.choices, 8))
+                choices = list(_iter_mixed_choices(role.choices, GRANULARITY))
             new_role.__name__ = role.__name__
             new_roles.append(new_role)
         GameRules.__init__(self, function, *new_roles)
-    
-    def run(self, *strategies):
+
+
+    def extrapolate_possible_outcomes(self, base_state):
+        for choice_state in self._iter_outcomes_rec(base_state, self.roles):
+            strategies = []
+            is_possible = True
+            utilities = []
+            for role in self.roles:
+                choices = [choice_state[var] for var in role.choicevars]
+                # Whether it is possible to take different choices
+                # depending of the context or not depends of what info we see
+                # for now, let's not handle that, asssume the user is blind
+                if len(choices) >= 2:
+                    assert len(choices) == 2
+                    if choices[0] != choices[1]:
+                        is_possible =  False
+                def choose(role, *args):
+                    return  choices[0]
+                strategies.append(choose)
+                utilities.append(role.utility)
+            if is_possible:
+                states_and_probas = self._get_states_and_probas(strategies)
+                result = dict(choice_state)
+                for state, proba in states_and_probas:
+                    for role in self.roles:
+                        result.setdefault(role.utility, 0.0)
+                        result[role.utility] += state[role.utility] * proba
+                yield result
+
+    def _get_states_and_probas(self, strategies):
         game = Game(self, strategies)
         probagame = ProbabilisticGame(game)
-        worlds_and_probas = [(w.state, p) for w, p in probagame.iter_worlds()]
+        return [(w.state, p) for w, p in probagame.iter_worlds()]
+        
+    def run(self, *strategies):
+        states_and_probas = self._get_states_and_probas(strategies)
         for role in self.roles:
-            print_role_expected_result(role, worlds_and_probas)
+            print_role_expected_result(role, states_and_probas)
 
 class Game:
     def __init__(self, rules, strategies, possible_states=None):
@@ -155,7 +209,9 @@ class Game:
         self.function = rules.function
         self.agents = {}
         for i, role in enumerate(rules.roles):
-            self.agents[role.choicevar] = Agent(role, strategies[i])
+            agent = Agent(role, strategies[i])
+            for choicevar in role.choicevars:
+                self.agents[choicevar] = agent
         if possible_states is None:
             possible_states = list(self.rules.iter_possible_outcomes({}))
         self._possible_states = possible_states

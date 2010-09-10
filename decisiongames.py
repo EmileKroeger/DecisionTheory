@@ -52,10 +52,16 @@ def last_strategy(role, *args):
 
 def blind_optimizer(role, game, *args):
     utilities_and_choices = []
-    for state in game.rules.iter_possible_outcomes({}):
-        choice = state[role.choicevar]
+    for state in game.rules.extrapolate_possible_outcomes({}):
+        #print "Possible state:", state
         utility = state[role.utility]
-        utilities_and_choices.append((utility, choice))
+        choices = [state[choicevar] for choicevar in role.choicevars]
+        if len(choices) == 1:
+            utilities_and_choices.append((utility, choices[0]))
+        else:
+            s = set(map(str, choices)) # hack, check they're all the same.
+            if len(s) == 1:
+                utilities_and_choices.append((utility, choices[0]))
     return sorted(utilities_and_choices, reverse=True)[0][1]
 
 ####################################
@@ -229,22 +235,22 @@ coin_guessing_rules = ProbaGameRules(coin_guessing, CoinGuesser1, CoinGuesser2)
 ###################################
 
 DRIVERUTIL = "DRIVERUTIL"
-DRIVERCHOICE = "DRIVERUTIL"
+DRIVERCHOICE1 = "DRIVERCHOICE1"
+DRIVERCHOICE2 = "DRIVERCHOICE2"
 STRAIGHT = "STRAIGHT"
 TURN = "TURN"
 
 class AbsentMindedDriver:
     utility = DRIVERUTIL
-    choicevar = DRIVERCHOICE
+    choicevars = DRIVERCHOICE1, DRIVERCHOICE2
     choices = [TURN, STRAIGHT]
     sees_world = False
 
 def absent_minded_driver(world):
-    if (world.get(DRIVERCHOICE) == TURN):
+    if (world.get(DRIVERCHOICE1) == TURN):
         world[DRIVERUTIL] = 0
     else:
-        del world[DRIVERCHOICE] # He's absent-minded, remember
-        if (world.get(DRIVERCHOICE) == TURN):
+        if (world.get(DRIVERCHOICE2) == TURN):
             world[DRIVERUTIL] = 4
         else:
             world[DRIVERUTIL] = 1
@@ -265,8 +271,8 @@ if __name__ == "__main__":
     #coin_guessing_rules.run(make_mono_strategy(HEADS), blind_optimizer)
     #print
     #coin_guessing_rules.run(blind_optimizer, blind_optimizer)
-    #absent_minded_driver_rules.run(blind_optimizer)
-    absent_minded_driver_rules.run(make_mono_strategy({TURN:0.33, STRAIGHT:0.67}))
+    absent_minded_driver_rules.run(blind_optimizer)
+    #absent_minded_driver_rules.run(make_mono_strategy({TURN:0.33, STRAIGHT:0.67}))
     #pass
 
 
