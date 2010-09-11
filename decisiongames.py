@@ -23,7 +23,7 @@
 #
 #####################################################
 
-from decisionworld import GameRules, ProbaGameRules
+from decisionworld import GameRules
 from predicates import *
 
 ####################################
@@ -43,12 +43,6 @@ def make_mono_strategy(choice):
     def choose(role, *args):
         return choice
     return choose
-
-def first_strategy(role, *args):
-    return role.choices[0]
-
-def last_strategy(role, *args):
-    return role.choices[-1]
 
 def blind_optimizer(role, game, *args):
     utilities_and_choices = []
@@ -150,9 +144,7 @@ def smart_prisoner(role, game):
 # Newcomb's problem
 ###################################
 
-
-OMEGA_WAS_RIGHT = "OMEGA_WAS_RIGHT"
-OMEGA_PREDICATION = "BOX_CONTENTS"
+OMEGA_PREDICATION = "OMEGA_PREDICATION"
 
 PLAYER_CHOICE = "PLAYER_CHOICE"
 ONEBOX = "ONEBOX"
@@ -160,7 +152,6 @@ TWOBOX = "TWOBOX"
 PLAYER_UTIL = "PLAYER_UTIL"
 
 class OmegaRole:
-    utility = OMEGA_WAS_RIGHT
     choicevar = OMEGA_PREDICATION
     choices = [ONEBOX, TWOBOX]
     sees_world = False
@@ -183,97 +174,76 @@ def newcombs_problem(world):
         world[PLAYER_UTIL] = opaque_box + transparent_box
     else:
         world[PLAYER_UTIL] = opaque_box
-    world[OMEGA_WAS_RIGHT] = (prediction == player_choice)
 
-def omega(role, game):
+def newcombs_omega(role, game):
     if game.is_certain(Is(PLAYER_CHOICE, ONEBOX)):
         return ONEBOX
-    elif game.is_certain(Is(PLAYER_CHOICE, TWOBOX)):
-        return TWOBOX
     else:
-        # stuck? Player deliberately opaque?
         return TWOBOX
                        
 newcombs_rules = GameRules(newcombs_problem, OmegaRole, NewcombsPlayerRole)
 
+
 ###################################
-# Coin guessing
+# Blackmail
 ###################################
 
-P1COIN = "P1COIN"
-P2COIN = "P2COIN"
-HEADS = "HEADS"
-TAILS = "TAILS"
+BLACKMAIL_CHOICES = [9, 6, 5, 4, 1]
+#BLACKMAIL_CHOICES = [9, 5, 1]
 
-class CoinGuesser1:
+class Splitter1Role:
     utility = P1UTIL
-    choicevar = P1COIN
-    choices = [HEADS, TAILS]
+    choicevar = P1CHOICE
+    choices = BLACKMAIL_CHOICES
     sees_world = False
-    
-class CoinGuesser2:
+
+class Splitter2Role:
     utility = P2UTIL
-    choicevar = P2COIN
-    choices = [HEADS, TAILS]
+    choicevar = P2CHOICE
+    choices = BLACKMAIL_CHOICES
     sees_world = False
 
-def coin_guessing(world):
-    coin1 = world.get(P1COIN)
-    coin2 = world.get(P2COIN)
-    world[P1UTIL] = int(coin1 == coin2)
-    world[P2UTIL] = 1 - int(coin1 == coin2)
-
-def randomguesser(role, game):
-    return {HEADS: 0.5, TAILS: 0.5}
-    #return game.random([(HEADS, 0.5), (TAILS, 0.5)])
-
-coin_guessing_rules = ProbaGameRules(coin_guessing, CoinGuesser1, CoinGuesser2)
-
-
-###################################
-# Absent-minded driver
-###################################
-
-DRIVERUTIL = "DRIVERUTIL"
-DRIVERCHOICE1 = "DRIVERCHOICE1"
-DRIVERCHOICE2 = "DRIVERCHOICE2"
-STRAIGHT = "STRAIGHT"
-TURN = "TURN"
-
-class AbsentMindedDriver:
-    utility = DRIVERUTIL
-    choicevars = DRIVERCHOICE1, DRIVERCHOICE2
-    choices = [TURN, STRAIGHT]
-    sees_world = False
-
-def absent_minded_driver(world):
-    if (world.get(DRIVERCHOICE1) == TURN):
-        world[DRIVERUTIL] = 0
+def blackmail(world):
+    p1val = world.get(P1CHOICE)
+    p2val = world.get(P2CHOICE)
+    if p1val + p2val <= 10:
+        world[P1UTIL] = p1val
+        world[P2UTIL] = p2val
     else:
-        if (world.get(DRIVERCHOICE2) == TURN):
-            world[DRIVERUTIL] = 4
+        world[P1UTIL] = 0
+        world[P2UTIL] = 0
+
+blackmail_rules = GameRules(blackmail, Splitter1Role, Splitter2Role)
+
+def smart_blackmailer(role, game):
+    for share in BLACKMAIL_CHOICES:
+        if game.is_certain(Implies(Is(role.choicevar, share),
+                                   Is(role.utility, share))):
+            return share
+    return 9
+                           
+def verbose_blackmailer(role, game):
+    if role.utility == P1UTIL:
+        name = "P1: "
+    else:
+        name = "P2: "
+    game.comment(name + "What will I play?")
+    for share in BLACKMAIL_CHOICES:
+        game.comment(name + "Could I get " + str(share) + "?")
+        if game.is_certain(Implies(Is(role.choicevar, share),
+                                   Is(role.utility, share)),
+                           verbose=True):
+            game.comment(name + "I can get " + str(share))
+            return share
         else:
-            world[DRIVERUTIL] = 1
-        
-absent_minded_driver_rules = ProbaGameRules(absent_minded_driver,
-                                            AbsentMindedDriver)
-    
+            game.comment(name + "I can't get " + str(share))
+    game.comment(name + "Final fallback!")
+    return 9
+                           
 if __name__ == "__main__":
-    #ultimatum_rules.run(first_strategy, first_strategy)
     #ultimatum_rules.run(blind_optimizer, blind_optimizer)
     #pd_rules.run(pd_asshole, blind_optimizer)
     #pd_rules.run(nice_prisoner, pd_sucker)
-    #newcombs_rules.run(omega, make_mono_strategy(ONEBOX))
-    #coin_guessing_rules.run(make_mono_strategy(HEADS), make_mono_strategy(HEADS))
-    #coin_guessing_rules.run(randomguesser, make_mono_strategy(HEADS))
-    #coin_guessing_rules.run(randomguesser, blind_optimizer)
-    #print
-    #coin_guessing_rules.run(make_mono_strategy(HEADS), blind_optimizer)
-    #print
-    #coin_guessing_rules.run(blind_optimizer, blind_optimizer)
-    absent_minded_driver_rules.run(blind_optimizer)
-    #absent_minded_driver_rules.run(make_mono_strategy({TURN:0.33, STRAIGHT:0.67}))
-    #pass
-
-
-
+    #newcombs_rules.run(newcombs_omega, make_mono_strategy(ONEBOX))
+    blackmail_rules.run(smart_blackmailer, smart_blackmailer)
+    #blackmail_rules.run(verbose_blackmailer, verbose_blackmailer)

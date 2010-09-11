@@ -36,8 +36,11 @@ class Agent:
 
 def print_role_result(role, state):
     chosen = ["%s = %s" % (var, str(state[var])) for var in role.choicevars]
-    print "%s -> %s = %s" % (", ".join(chosen), role.utility,
-                             str(state[role.utility]))
+    print ", ".join(chosen),
+    if hasattr(role, "utility"):
+        print "-> %s = %s" % (role.utility, str(state[role.utility]))
+    else:
+        print
 
 def print_role_expected_result(role, states_and_probas):
     for choicevar in role.choicevars:
@@ -60,16 +63,17 @@ def print_role_expected_result(role, states_and_probas):
             print "Choice (%s): %s" % (str(choicevar), choices[0])
         else:
             print "Choice (%s): Never encountered" % str(choicevar)
-    expected_utility = 0.0
-    utilities = set()
-    for state, proba in states_and_probas:
-        expected_utility += state[role.utility] * proba
-        utilities.add(state[role.utility])
-    if len(utilities) > 1:
-        print "Expected utility (%s): %.2f" % (str(role.utility),
-                                               expected_utility)
-    else:
-        print "Utility (%s):" % str(role.utility), str(utilities.pop())
+    if hasattr(role, "utility"):
+        expected_utility = 0.0
+        utilities = set()
+        for state, proba in states_and_probas:
+            expected_utility += state[role.utility] * proba
+            utilities.add(state[role.utility])
+        if len(utilities) > 1:
+            print "Expected utility (%s): %.2f" % (str(role.utility),
+                                                   expected_utility)
+        else:
+            print "Utility (%s):" % str(role.utility), str(utilities.pop())
 
 def _iter_choice_states(choices, state, choicevars):
     if choicevars:
@@ -121,7 +125,7 @@ class GameRules:
             yield result
 
     def extrapolate_possible_outcomes(self, base_state):
-        return iter_possible_outcomes(self, base_state)
+        return self.iter_possible_outcomes(base_state)
 
     def get_possible_values(self, var):
         values = set()
@@ -169,7 +173,6 @@ class ProbaGameRules(GameRules):
         for choice_state in self._iter_outcomes_rec(base_state, self.roles):
             strategies = []
             is_possible = True
-            utilities = []
             for role in self.roles:
                 choices = [choice_state[var] for var in role.choicevars]
                 # Whether it is possible to take different choices
@@ -182,14 +185,14 @@ class ProbaGameRules(GameRules):
                 def choose(role, *args):
                     return  choices[0]
                 strategies.append(choose)
-                utilities.append(role.utility)
             if is_possible:
                 states_and_probas = self._get_states_and_probas(strategies)
                 result = dict(choice_state)
                 for state, proba in states_and_probas:
                     for role in self.roles:
-                        result.setdefault(role.utility, 0.0)
-                        result[role.utility] += state[role.utility] * proba
+                        if hasattr(role, "utility"):
+                            result.setdefault(role.utility, 0.0)
+                            result[role.utility] += state[role.utility] * proba
                 yield result
 
     def _get_states_and_probas(self, strategies):
@@ -203,7 +206,7 @@ class ProbaGameRules(GameRules):
             print_role_expected_result(role, states_and_probas)
 
 class Game:
-    def __init__(self, rules, strategies, possible_states=None):
+    def __init__(self, rules, strategies, possible_states=None, depth=0):
         self.rules = rules
         self.strategies = strategies
         self.function = rules.function
@@ -215,22 +218,35 @@ class Game:
         if possible_states is None:
             possible_states = list(self.rules.iter_possible_outcomes({}))
         self._possible_states = possible_states
+        self.depth = depth
 
     def get_agent_choice(self, var, world):
         return self.agents[var].get_choice(world)
 
-    def is_certain(self, predicate):
+    def is_certain(self, predicate, verbose=False):
         allowed_states = filter(predicate.fulfills, self._possible_states)
         if len(allowed_states) >= len(self._possible_states):
             assert len(allowed_states) == len(self._possible_states)
+            if verbose:
+                self.comment(str(predicate) + " already true of " +\
+                             str(len(allowed_states)) + " states.")
+                for state in allowed_states:
+                    self.comment(" " + str(state))
             return True
         elif len(allowed_states) == 0:
+            if verbose:
+                self.comment(str(predicate) + " never true.")
             return False
         else:
+            if verbose:
+                self.comment(str(predicate) + " uncertain - simulating.")
             # We need recursion! But under strict control.
             sub_game = Game(self.rules, self.strategies,
-                            possible_states=allowed_states)
+                            possible_states=allowed_states, depth=self.depth+1)
             world = sub_game.run()
+            if verbose:
+                self.comment(str(predicate) + " == " +\
+                             str(world.state in allowed_states))
             return world.state in allowed_states
 
     def random(self):
@@ -240,6 +256,9 @@ class Game:
         world = World(self)
         self.function(world)        
         return world
+
+    def comment(self, line):
+        print " "*self.depth + str(line)
 
 class ProbabilisticGame:
     def __init__(self, game):

@@ -12,8 +12,13 @@ Next steps:
     * -define a mixed strategies game-
     * -make mixed strategy players-
     * -make a reliable way to get expected utility from a mixed strategy.-
-    * When creating game, modify rules to add interesting mixed strategy choices.
-    
+    * -When creating game, modify rules to add interesting mixed strategy
+        choices.-
+    * -Separate random and non-random games-
+    * Add a way of adding "fixed" players to games (like omega or coins)
+    * -Make Omega and coins work without utility-
+    * Make a GUI for exploring move history (break-down of proofs)
+
 
 ########################
 
