@@ -205,6 +205,8 @@ class ProbaGameRules(GameRules):
         for role in self.roles:
             print_role_expected_result(role, states_and_probas)
 
+MAX_DEPTH = 1
+
 class Game:
     def __init__(self, rules, strategies, possible_states=None, depth=0):
         self.rules = rules
@@ -230,8 +232,8 @@ class Game:
             if verbose:
                 self.comment(str(predicate) + " already true of " +\
                              str(len(allowed_states)) + " states.")
-                for state in allowed_states:
-                    self.comment(" " + str(state))
+                #for state in allowed_states:
+                #    self.comment(" " + str(state))
             return True
         elif len(allowed_states) == 0:
             if verbose:
@@ -258,7 +260,8 @@ class Game:
         return world
 
     def comment(self, line):
-        print " "*self.depth + str(line)
+        if self.depth <= MAX_DEPTH:
+            print " "*self.depth + str(line)
 
 class ProbabilisticGame:
     def __init__(self, game):

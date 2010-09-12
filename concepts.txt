@@ -1,0 +1,11 @@
+
+=== Superior Epistemic Vantage ===
+
+Epistemic vantage
+
+ - discussion
+
+In blackmail, say choices are [9, 6, 5, 1] ... both agents choose 6.
+So it seems like they get things *wrong*. Why?
+
+My algorithm only works when there is no concept of superior epistemic vantage?

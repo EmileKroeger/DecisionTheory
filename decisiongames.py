@@ -245,5 +245,6 @@ if __name__ == "__main__":
     #pd_rules.run(pd_asshole, blind_optimizer)
     #pd_rules.run(nice_prisoner, pd_sucker)
     #newcombs_rules.run(newcombs_omega, make_mono_strategy(ONEBOX))
-    blackmail_rules.run(smart_blackmailer, smart_blackmailer)
-    #blackmail_rules.run(verbose_blackmailer, verbose_blackmailer)
+    #blackmail_rules.run(smart_blackmailer, smart_blackmailer)
+    #blackmail_rules.run(verbose_blackmailer, smart_blackmailer)
+    blackmail_rules.run(verbose_blackmailer, verbose_blackmailer)
