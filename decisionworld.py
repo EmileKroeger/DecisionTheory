@@ -102,8 +102,9 @@ class GameRules:
         # Now would be the right place to do some pre-analysis.
         # On possible outcomes, etc.
 
-    def run(self, *strategies):
-        game = Game(self, strategies)
+    def run(self, *strategies, **kwargs):
+        logger = kwargs.get("logger", None)
+        game = Game(self, strategies, logger=logger)
         # This is where I may want to make several forks.
         world = game.run()
         for role in self.roles:
@@ -205,10 +206,8 @@ class ProbaGameRules(GameRules):
         for role in self.roles:
             print_role_expected_result(role, states_and_probas)
 
-MAX_DEPTH = 1
-
 class Game:
-    def __init__(self, rules, strategies, possible_states=None, depth=0):
+    def __init__(self, rules, strategies, possible_states=None, logger=None):
         self.rules = rules
         self.strategies = strategies
         self.function = rules.function
@@ -220,33 +219,36 @@ class Game:
         if possible_states is None:
             possible_states = list(self.rules.iter_possible_outcomes({}))
         self._possible_states = possible_states
-        self.depth = depth
+        self.logger = logger
 
     def get_agent_choice(self, var, world):
         return self.agents[var].get_choice(world)
 
-    def is_certain(self, predicate, verbose=False):
+    def is_certain(self, predicate):
         allowed_states = filter(predicate.fulfills, self._possible_states)
         if len(allowed_states) >= len(self._possible_states):
             assert len(allowed_states) == len(self._possible_states)
-            if verbose:
+            if self.logger:
                 self.comment(str(predicate) + " already true of " +\
                              str(len(allowed_states)) + " states.")
-                #for state in allowed_states:
-                #    self.comment(" " + str(state))
+                self.logger.enter("States")
+                for state in allowed_states:
+                    self.comment(" " + str(state))
+                self.logger.exit()
             return True
         elif len(allowed_states) == 0:
-            if verbose:
+            if self.logger:
                 self.comment(str(predicate) + " never true.")
             return False
         else:
-            if verbose:
-                self.comment(str(predicate) + " uncertain - simulating.")
+            if self.logger:
+                self.logger.enter(str(predicate) + " uncertain - simulating.")
             # We need recursion! But under strict control.
             sub_game = Game(self.rules, self.strategies,
-                            possible_states=allowed_states, depth=self.depth+1)
+                            possible_states=allowed_states, logger=self.logger)
             world = sub_game.run()
-            if verbose:
+            if self.logger:
+                self.logger.exit()
                 self.comment(str(predicate) + " == " +\
                              str(world.state in allowed_states))
             return world.state in allowed_states
@@ -260,8 +262,8 @@ class Game:
         return world
 
     def comment(self, line):
-        if self.depth <= MAX_DEPTH:
-            print " "*self.depth + str(line)
+        if self.logger:
+            self.logger.add(line)
 
 class ProbabilisticGame:
     def __init__(self, game):

@@ -9,3 +9,17 @@ In blackmail, say choices are [9, 6, 5, 1] ... both agents choose 6.
 So it seems like they get things *wrong*. Why?
 
 My algorithm only works when there is no concept of superior epistemic vantage?
+
+
+=== Recursion-based algorithms ===
+
+So, it doesn't seem to be working the way I want.
+
+I would like to isolate the subset of problems where it does.
+
+is_certain(x) creates a game where all possibilities are limited.
+
+A9 -> AU9 indirectly implies A9 -> B1 ... which, combined with the game
+rules, indirectly imlies B4->BU4.
+
+Which is simply not true once we run the simulation.

@@ -2,6 +2,8 @@ import Tkinter
 
 from Tkinter import *
 
+INDENT = "    "
+
 class NodeList:
     def __init__(self):
         self.list = []
@@ -12,7 +14,7 @@ class NodeList:
     def unroll(self, viewer, depth=0):
         for item in self.list:
             if isinstance(item, str):
-                viewer.append_line("  " * depth + item)
+                viewer.append_line(INDENT * depth + item)
             else:
                 item.unroll(viewer, depth)
 
@@ -30,11 +32,11 @@ class ExpandableNode:
 
     def unroll(self, viewer, depth=0):
         if self.expanded:
-            line = "  " * depth + "[-] " + self.title
+            line = INDENT * depth + "[-] " + self.title
             viewer.append_line_callback(line, self.toggle)
             self.nodelist.unroll(viewer, depth + 1)
         else:
-            line = "  " * depth + "[-] " + self.title
+            line = INDENT * depth + "[-] " + self.title
             viewer.append_line_callback(line, self.toggle)
 
 class NodeBuilder:
@@ -83,16 +85,16 @@ class TreeViewer:
     def build_listbox(self):
         lb = Listbox(self.root)
 
-        self.yScroll  =  Scrollbar ( self.root, orient=VERTICAL )
-        self.yScroll.grid ( row=0, column=1, sticky=N+S )
+        self.yScroll  =  Scrollbar(self.root, orient=VERTICAL)
+        self.yScroll.grid(row=0, column=1, sticky=N+S )
 
-        self.xScroll  =  Scrollbar ( self.root, orient=HORIZONTAL )
-        self.xScroll.grid ( row=1, column=0, sticky=E+W )
+        self.xScroll  =  Scrollbar(self.root, orient=HORIZONTAL)
+        self.xScroll.grid(row=1, column=0, sticky=E+W)
 
-        self.listbox = Listbox ( self.root,
+        self.listbox = Listbox(self.root,
              xscrollcommand=self.xScroll.set,
-             yscrollcommand=self.yScroll.set )
-        self.listbox.grid ( row=0, column=0, sticky=N+S+E+W )
+             yscrollcommand=self.yScroll.set)
+        self.listbox.grid(row=0, column=0, sticky=N+S+E+W)
         self.xScroll["command"]  =  self.listbox.xview
         self.yScroll["command"]  =  self.listbox.yview
 
@@ -102,6 +104,14 @@ class TreeViewer:
         
     def run(self):
         self.root = Tk()
+
+        #self.root.grid(sticky=N+S+E+W)
+
+        top=self.root.winfo_toplevel()
+        top.rowconfigure(0, weight=1)
+        top.columnconfigure(0, weight=1)
+        self.root.rowconfigure(0, weight=1)
+        self.root.columnconfigure(0, weight=1)
 
         self.build_listbox()
 

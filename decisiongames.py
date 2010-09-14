@@ -24,6 +24,7 @@
 #####################################################
 
 from decisionworld import GameRules
+import tree_viewer
 from predicates import *
 
 ####################################
@@ -231,8 +232,7 @@ def verbose_blackmailer(role, game):
     for share in BLACKMAIL_CHOICES:
         game.comment(name + "Could I get " + str(share) + "?")
         if game.is_certain(Implies(Is(role.choicevar, share),
-                                   Is(role.utility, share)),
-                           verbose=True):
+                                   Is(role.utility, share))):
             game.comment(name + "I can get " + str(share))
             return share
         else:
@@ -247,4 +247,8 @@ if __name__ == "__main__":
     #newcombs_rules.run(newcombs_omega, make_mono_strategy(ONEBOX))
     #blackmail_rules.run(smart_blackmailer, smart_blackmailer)
     #blackmail_rules.run(verbose_blackmailer, smart_blackmailer)
-    blackmail_rules.run(verbose_blackmailer, verbose_blackmailer)
+    builder = tree_viewer.NodeBuilder()
+    blackmail_rules.run(verbose_blackmailer, verbose_blackmailer,
+                        logger=builder)
+    tv = tree_viewer.TreeViewer(builder.root)
+    tv.run()
